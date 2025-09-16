@@ -1,52 +1,67 @@
-// Expect an Input Data key named `start_url` (e.g., https://example.com/)
-const start = (inputData.start_url || '').trim();
-if (!start) throw new Error('Missing start_url');
+// Inputs:
+// - start_url (required) e.g. https://example.com/
+// - request_id (required) e.g. recXXXX
+// - depth (optional, default 2)
+// - max_pages (optional, default 40)
+// - crawler_type (optional; only if your task schema allows it)
 
-const origin = new URL(start).origin; // e.g., https://example.com
+const start = (inputData.start_url || "").trim();
+if (!start) throw new Error("Missing start_url");
 
-// High-signal paths
+// Normalize to https://domain.tld/
+const u = new URL(start);
+const origin = u.origin;
+const root = origin + "/";
+
+// HIGH-signal sections to prioritize
 const include = [
   `${origin}/solutions/*`,
   `${origin}/enterprise*`,
   `${origin}/customers/*`,
   `${origin}/case-studies/*`,
+  `${origin}/customer-stories/*`,
   `${origin}/pricing*`,
   `${origin}/partners/*`,
   `${origin}/compare/*`,
-  `${origin}/alternatives/*`
+  `${origin}/alternatives/*`,
+  `${origin}/industries/*`,
+  `${origin}/product*`,
+  `${origin}/platform*`,
 ];
 
-// Low-signal/noise
+// LOW-signal / noise
 const exclude = [
   `*?*`, `*#*`,
   `${origin}/careers*`, `${origin}/jobs*`,
   `${origin}/legal*`, `${origin}/privacy*`, `${origin}/terms*`,
   `${origin}/help*`, `${origin}/support*`,
-  `${origin}/press*`, `${origin}/brand*`
+  `${origin}/press*`, `${origin}/brand*`,
+  `${origin}/events*`, `${origin}/status*`,
 ];
 
-// Build the exact overrides object the actor expects
 const overrides = {
-  startUrls: [{ url: start }],
+  // Required + safe
+  startUrls: [{ url: root }],
   includeUrlGlobs: include,
   excludeUrlGlobs: exclude,
   sameDomain: true,
 
-  // ✅ FIX: must be one of the allowed values
-  crawlerType: "playwright:adaptive",
+  // Crawl bounds (safe on web-scraper and most derivatives)
+  maxRequestsPerCrawl: Number(inputData.max_pages || 40),
+  maxCrawlingDepth: Number(inputData.depth || 2),
 
-  handleSitemaps: false,
-  keepUrlFragments: false,
-  downloadTexts: true,
-  blockMedia: true,
-  removeCookieWarnings: true,
-  readableContentExtractor: "mozilla-readability",
-  waitFor: "main, article, [role=\"main\"], #main",
-  waitForMillis: 1500,
-  pageScrollMaxHeightPixels: 6000,
-  maxRequestsPerCrawl: 40,
-  maxCrawlingDepth: 2
+  // Correlation & UI breadcrumb
+  datasetName: `req_${inputData.request_id || "unknown"}`,
+  customData: {
+    request_id: inputData.request_id || null,
+    source: "carrd"
+  },
 };
 
-// Return one token for Apify → Run Task
-return { overrides: JSON.stringify(overrides, null, 2) };
+// Optional: ONLY set this if your Task’s schema allows it.
+// If you’re not 100% sure, leave it unset and the Task default is used.
+if (inputData.crawler_type) {
+  overrides.crawlerType = String(inputData.crawler_type);
+}
+
+return { overrides };
