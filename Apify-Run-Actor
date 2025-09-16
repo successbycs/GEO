@@ -1,0 +1,52 @@
+// Expect an Input Data key named `start_url` (e.g., https://example.com/)
+const start = (inputData.start_url || '').trim();
+if (!start) throw new Error('Missing start_url');
+
+const origin = new URL(start).origin; // e.g., https://example.com
+
+// High-signal paths
+const include = [
+  `${origin}/solutions/*`,
+  `${origin}/enterprise*`,
+  `${origin}/customers/*`,
+  `${origin}/case-studies/*`,
+  `${origin}/pricing*`,
+  `${origin}/partners/*`,
+  `${origin}/compare/*`,
+  `${origin}/alternatives/*`
+];
+
+// Low-signal/noise
+const exclude = [
+  `*?*`, `*#*`,
+  `${origin}/careers*`, `${origin}/jobs*`,
+  `${origin}/legal*`, `${origin}/privacy*`, `${origin}/terms*`,
+  `${origin}/help*`, `${origin}/support*`,
+  `${origin}/press*`, `${origin}/brand*`
+];
+
+// Build the exact overrides object the actor expects
+const overrides = {
+  startUrls: [{ url: start }],
+  includeUrlGlobs: include,
+  excludeUrlGlobs: exclude,
+  sameDomain: true,
+
+  // ✅ FIX: must be one of the allowed values
+  crawlerType: "playwright:adaptive",
+
+  handleSitemaps: false,
+  keepUrlFragments: false,
+  downloadTexts: true,
+  blockMedia: true,
+  removeCookieWarnings: true,
+  readableContentExtractor: "mozilla-readability",
+  waitFor: "main, article, [role=\"main\"], #main",
+  waitForMillis: 1500,
+  pageScrollMaxHeightPixels: 6000,
+  maxRequestsPerCrawl: 40,
+  maxCrawlingDepth: 2
+};
+
+// Return one token for Apify → Run Task
+return { overrides: JSON.stringify(overrides, null, 2) };
