@@ -27,6 +27,12 @@ const include = [
   `${origin}/industries/*`,
   `${origin}/product*`,
   `${origin}/platform*`,
+  `${origin}/industries*`,
+  `${origin}/product*`,
+  `${origin}/integrations*`,
+  `${origin}/usecases*`,
+  `${origin}/use-cases*`,
+  `${origin}/resource*`,
 ];
 
 // LOW-signal / noise
