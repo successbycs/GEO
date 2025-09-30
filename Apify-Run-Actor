@@ -1,73 +1,58 @@
-// Inputs:
-// - start_url (required) e.g. https://example.com/
-// - request_id (required) e.g. recXXXX
-// - depth (optional, default 2)
-// - max_pages (optional, default 40)
-// - crawler_type (optional; only if your task schema allows it)
+// Inputs to map: start_url (required), request_id (from earlier), optional: depth, max_pages
+const start = (inputData.start_url || '').trim();
+if (!start) throw new Error('Missing start_url');
 
-const start = (inputData.start_url || "").trim();
-if (!start) throw new Error("Missing start_url");
-
-// Normalize to https://domain.tld/
 const u = new URL(start);
 const origin = u.origin;
-const root = origin + "/";
 
-// HIGH-signal sections to prioritize
+// --- INCLUDE / EXCLUDE ---
+// Add vendor-specific paths as needed (e.g., /products/*, /workflows/*)
 const include = [
-  `${origin}/solutions/*`,
-  `${origin}/enterprise*`,
-  `${origin}/customers/*`,
-  `${origin}/case-studies/*`,
-  `${origin}/customer-stories/*`,
-  `${origin}/pricing*`,
-  `${origin}/partners/*`,
-  `${origin}/compare/*`,
-  `${origin}/alternatives/*`,
-  `${origin}/industries/*`,
-  `${origin}/product*`,
-  `${origin}/platform*`,
-  `${origin}/industries*`,
-  `${origin}/product*`,
-  `${origin}/integrations*`,
-  `${origin}/usecases*`,
-  `${origin}/use-cases*`,
-  `${origin}/resource*`,
+  `${origin}/solutions/*`, `${origin}/industries/*`,
+  `${origin}/product*`, `${origin}/products/*`, `${origin}/platform*`,
+  `${origin}/pricing*`, `${origin}/partners/*`,
+  `${origin}/customers/*`, `${origin}/case-studies/*`, `${origin}/customer-stories/*`,
+  `${origin}/compare/*`, `${origin}/alternatives/*`,
+  `${origin}/security*`, `${origin}/integrations*`,
+  `${origin}/use-cases/*`, `${origin}/resources/*`,
+  `${origin}/workflows/*`, `${origin}/store/*`
 ];
 
-// LOW-signal / noise
 const exclude = [
   `*?*`, `*#*`,
   `${origin}/careers*`, `${origin}/jobs*`,
   `${origin}/legal*`, `${origin}/privacy*`, `${origin}/terms*`,
   `${origin}/help*`, `${origin}/support*`,
   `${origin}/press*`, `${origin}/brand*`,
-  `${origin}/events*`, `${origin}/status*`,
+  `${origin}/events*`, `${origin}/status*`
 ];
 
+// --- OVERRIDES PAYLOAD ---
 const overrides = {
-  // Required + safe
-  startUrls: [{ url: root }],
+  startUrls: [{ url: `${origin}/` }],
   includeUrlGlobs: include,
   excludeUrlGlobs: exclude,
   sameDomain: true,
 
-  // Crawl bounds (safe on web-scraper and most derivatives)
-  maxRequestsPerCrawl: Number(inputData.max_pages || 40),
+  // Content extraction (so dataset has markdown/text)
+  downloadTexts: true,
+  readableContentExtractor: "mozilla-readability",
+  waitFor: 'main, article, [role="main"], #main',
+  waitForMillis: 1500,
+  keepUrlFragments: false,
+  blockMedia: true,
+
+  // Crawl bounds
+  maxRequestsPerCrawl: Number(inputData.max_pages || 60),
   maxCrawlingDepth: Number(inputData.depth || 2),
 
-  // Correlation & UI breadcrumb
-  datasetName: `req_${inputData.request_id || "unknown"}`,
-  customData: {
-    request_id: inputData.request_id || null,
-    source: "carrd"
-  },
+  // Correlation
+  datasetName: `req_${inputData.request_id || 'unknown'}`,
+  customData: { request_id: inputData.request_id || null, source: 'carrd' }
 };
 
-// Optional: ONLY set this if your Task’s schema allows it.
-// If you’re not 100% sure, leave it unset and the Task default is used.
-if (inputData.crawler_type) {
-  overrides.crawlerType = String(inputData.crawler_type);
-}
-
-return { overrides };
+// Return BOTH an object and a JSON string
+return {
+  apify_overrides: overrides,                              // object (preferred)
+  apify_overrides_json: JSON.stringify(overrides, null, 2) // string (fallback)
+};
